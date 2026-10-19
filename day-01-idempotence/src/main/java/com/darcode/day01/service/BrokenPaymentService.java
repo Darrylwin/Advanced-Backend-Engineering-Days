@@ -8,6 +8,7 @@ import com.darcode.day01.repository.AccountRepository;
 import com.darcode.day01.repository.PaymentRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Deliberately naive implementation, active only under the "broken" profile.
@@ -26,6 +27,7 @@ public class BrokenPaymentService implements PaymentService {
     }
 
     @Override
+    @Transactional
     public PaymentResult create(CreatePaymentCommand command) {
         Account account = accounts.findWithLockById(command.accountId())
                 .orElseThrow(() -> new BusinessException(
