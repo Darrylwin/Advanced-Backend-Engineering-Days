@@ -7,7 +7,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-$SCRIPT_DIR/../../docker-compose.yml}"
 # Unaligned, tuples-only output with '|' as field separator: easy to parse, no decoration.
 psql_query() {
   docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    psql -U demo -d demo -X -q -A -t -F '|' -v ON_ERROR_STOP=1 -c "$1"
+    psql -U backend-engineer -d backend-engineering -X -q -A -t -F '|' -v ON_ERROR_STOP=1 -c "$1"
 }
 
 # Demo data lives here, not in the migrations: the schema stays free of fixtures.

@@ -24,8 +24,12 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 new_idempotency_key() {
   if command -v uuidgen > /dev/null 2>&1; then
     uuidgen | tr '[:upper:]' '[:lower:]'
+  elif command -v openssl > /dev/null 2>&1; then
+    openssl rand -hex 16
+  elif [ -r /dev/urandom ]; then
+    head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'
   else
-    printf 'demo-%s-%s' "$(date +%s)" "$RANDOM"
+    printf '%s-%s-%s' "$(date +%s)" "$(date +%N 2>/dev/null || echo $RANDOM)" "$RANDOM"
   fi
 }
 
@@ -151,7 +155,7 @@ main() {
   if [[ "$count" -eq 1 && "$balance" -eq "$expected" ]]; then
     ok "One intent, one debit. Balance is $(money "$balance"), as expected."
   else
-    ko "Double charge: expected $(money "$expected"), got $(money "$balance") ($count payments for a single intent)."
+    ko "Double charge: expected $(money "$expected"), got $(money "$balance") which means $count payments for a single intent."
   fi
   printf '\n'
 }
