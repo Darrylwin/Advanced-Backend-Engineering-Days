@@ -1,0 +1,10 @@
+package com.darcode.day01.exception;
+
+public enum ErrorCode {
+    ACCOUNT_NOT_FOUND,
+    INSUFFICIENT_FUNDS,
+    IDEMPOTENCY_KEY_REQUIRED,
+    IDEMPOTENCY_KEY_REFUSED,
+    IDEMPOTENCY_KEY_IN_USE,
+    DATA_CONFLICT,
+}
