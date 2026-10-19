@@ -1,3 +1,5 @@
+name: advanced-backend-engineering-days
+
 services:
   postgres:
     image: postgres:16-alpine
