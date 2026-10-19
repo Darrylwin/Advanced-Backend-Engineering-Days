@@ -1,3 +1,43 @@
 spring:
   application:
     name: day-01-idempotence
+
+  profiles:
+    default: fixed
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/backend-engineering}
+    username: ${DB_USER:backend-engineer}
+    password: ${DB_PASSWORD:database_password}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+  info:
+    env:
+      enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile:
+        - broken
+
+info:
+  mode: broken
+
+---
+spring:
+  config:
+    activate:
+      on-profile: fixed
+info:
+  mode: fixed
