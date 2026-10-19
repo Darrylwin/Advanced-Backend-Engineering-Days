@@ -7,7 +7,5 @@ services:
       POSTGRES_USER: backend-engineer
       POSTGRES_PASSWORD: fWmKFPq74VQVtNWeFqxX0Ckr
       POSTGRES_DB: backend-engineering
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
