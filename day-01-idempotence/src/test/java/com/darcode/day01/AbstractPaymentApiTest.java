@@ -12,15 +12,16 @@ import com.darcode.day01.repository.AccountRepository;
 import com.darcode.day01.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureRestTestClient
 @Import(TestcontainersConfiguration.class)
 abstract class AbstractPaymentApiTest {
 
@@ -31,7 +32,7 @@ abstract class AbstractPaymentApiTest {
     protected static final String PAYLOAD = "{\"accountId\":1,\"amountCents\":10000}";
 
     @Autowired
-    protected TestRestTemplate http;
+    protected RestTestClient http;
 
     @Autowired
     protected AccountRepository accounts;
@@ -47,14 +48,20 @@ abstract class AbstractPaymentApiTest {
     }
 
     protected ResponseEntity<String> post(String idempotencyKey, String body) {
-        return http.postForEntity(PAYMENTS_PATH, new HttpEntity<>(body, headers(idempotencyKey)), String.class);
+        var exchangeResult = http.post().uri(PAYMENTS_PATH).headers(
+                h -> h.addAll(headers(idempotencyKey))
+        ).body(body).exchange().returnResult(String.class);
+
+        return new ResponseEntity<>(
+                exchangeResult.getResponseBody(), exchangeResult.getResponseHeaders(),
+                exchangeResult.getStatus());
     }
+
 
     /**
      * Fires two identical requests released at the same moment, like a double click.
      */
-    protected List<ResponseEntity<String>> postTwiceConcurrently(String idempotencyKey, String body)
-            throws Exception {
+    protected List<ResponseEntity<String>> postTwiceConcurrently(String idempotencyKey, String body) throws Exception {
         CountDownLatch startGate = new CountDownLatch(1);
         ExecutorService pool = Executors.newFixedThreadPool(2);
 
