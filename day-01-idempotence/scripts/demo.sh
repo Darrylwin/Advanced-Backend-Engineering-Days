@@ -21,6 +21,9 @@ source "$SCRIPT_DIR/lib/db.sh"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# Column widths (in characters) of the table currently being drawn.
+BOX_WIDTHS=()
+
 new_idempotency_key() {
   if command -v uuidgen > /dev/null 2>&1; then
     uuidgen | tr '[:upper:]' '[:lower:]'
@@ -52,6 +55,59 @@ send_payment() {
     -w '%{time_total}' > "$TMP_DIR/$n.time"
 }
 
+# --- Table rendering --------------------------------------------------------
+
+# Prints a horizontal bar of $1 box-drawing characters.
+hbar() {
+  local count="$1" bar="" i
+  for ((i = 0; i < count; i++)); do
+    bar+='─'
+  done
+  printf '%s' "$bar"
+}
+
+# box_rule <left> <middle> <right>: draws a border line sized to BOX_WIDTHS.
+box_rule() {
+  local left="$1" middle="$2" right="$3" i last=$(( ${#BOX_WIDTHS[@]} - 1 ))
+
+  printf '  %s%s' "$DIM" "$left"
+  for i in "${!BOX_WIDTHS[@]}"; do
+    hbar $(( BOX_WIDTHS[i] + 2 ))
+    if (( i < last )); then
+      printf '%s' "$middle"
+    fi
+  done
+  printf '%s%s\n' "$right" "$RESET"
+}
+
+# box_row <color> <text> [<color> <text> ...]: one table row, one pair per column.
+box_row() {
+  local i=0 color text
+
+  printf '  %s│%s' "$DIM" "$RESET"
+  while (( $# )); do
+    color="$1"; text="$2"; shift 2
+    printf ' %s%-*s%s %s│%s' "$color" "${BOX_WIDTHS[i]}" "$text" "$RESET" "$DIM" "$RESET"
+    i=$(( i + 1 ))
+  done
+  printf '\n'
+}
+
+# label_value <label> <value>: aligned key/value line used in the summary blocks.
+label_value() {
+  printf '  %s%-16s%s %s\n' "$DIM" "$1" "$RESET" "$2"
+}
+
+# --- Responses table --------------------------------------------------------
+
+print_responses_header() {
+  BOX_WIDTHS=(3 6 9 18 14 8)
+
+  box_rule '┌' '┬' '┐'
+  box_row "$BOLD" "#" "$BOLD" "HTTP" "$BOLD" "Replayed" "$BOLD" "Payment" "$BOLD" "Balance after" "$BOLD" "Time"
+  box_rule '├' '┼' '┤'
+}
+
 print_response_row() {
   local n="$1" status replayed payment balance elapsed status_color replayed_color
 
@@ -74,32 +130,38 @@ print_response_row() {
     balance="-"
   fi
 
-  printf '  '
-  cell "$RESET" 3 "$n"
-  cell "$status_color" 5 "$status"
-  cell "$replayed_color" 9 "$replayed"
-  cell "$RESET" 9 "$payment"
-  cell "$RESET" 14 "$balance"
-  printf '%s\n' "$elapsed"
+  box_row \
+    "$BOLD" "$n" \
+    "$BOLD$status_color" "$status" \
+    "$replayed_color" "$replayed" \
+    "$RESET" "$payment" \
+    "$RESET" "$balance" \
+    "$DIM" "$elapsed"
 }
 
+print_responses_footer() {
+  box_rule '└' '┴' '┘'
+}
+
+# --- Database table ---------------------------------------------------------
+
 print_database_rows() {
-  printf '  '
-  cell "$DIM" 5 "id"
-  cell "$DIM" 9 "amount"
-  printf '%sidempotency_key%s\n' "$DIM" "$RESET"
+  BOX_WIDTHS=(5 9 16)
+
+  box_rule '┌' '┬' '┐'
+  box_row "$BOLD" "id" "$BOLD" "amount" "$BOLD" "idempotency_key"
+  box_rule '├' '┼' '┤'
 
   local id amount stored_key
   while IFS='|' read -r id amount stored_key; do
-    printf '  '
-    cell "$RESET" 5 "$id"
-    cell "$RESET" 9 "$(money "$amount")"
     if [[ "$stored_key" == "(none)" ]]; then
-      printf '%s%s%s\n' "$RED" "$stored_key" "$RESET"
+      box_row "$RESET" "$id" "$RESET" "$(money "$amount")" "$RED" "$stored_key"
     else
-      printf '%s…\n' "${stored_key:0:8}"
+      box_row "$RESET" "$id" "$RESET" "$(money "$amount")" "$CYAN" "${stored_key:0:8}…"
     fi
   done < <(query_payments)
+
+  box_rule '└' '┴' '┘'
 }
 
 main() {
@@ -116,16 +178,20 @@ main() {
   fi
 
   banner "DAY 1 · IDEMPOTENCE" "A client double-clicks \"Pay\". What does the server do?"
-  printf '  %-16s %s%s%s\n' "server profile" "$BOLD$mode_color" "$mode" "$RESET"
+  label_value "server profile" "$BOLD$mode_color$mode$RESET"
 
   step "1. Initial state"
-  printf '  account #%s   balance %s%s%s   payments %s\n' \
-    "$ACCOUNT_ID" "$BOLD" "$(money "$(query_balance)")" "$RESET" "$(query_payment_count)"
+  label_value "account" "#$ACCOUNT_ID"
+  label_value "balance" "$BOLD$(money "$(query_balance)")$RESET"
+  label_value "payments" "$(query_payment_count)"
 
   step "2. The double click"
   note "  Two identical requests, fired at the same instant, with the same Idempotency-Key."
-  printf '  %sPOST%s /api/v1/payments   %s\n' "$BOLD" "$RESET" "$PAYLOAD"
-  printf '  %sIdempotency-Key:%s %s\n\n' "$BOLD" "$RESET" "$key"
+  printf '\n'
+  label_value "request" "${BOLD}POST${RESET} /api/v1/payments"
+  label_value "body" "$PAYLOAD"
+  label_value "Idempotency-Key" "$CYAN$key$RESET"
+  printf '\n'
 
   local pid_1 pid_2
   send_payment 1 "$key" & pid_1=$!
@@ -133,15 +199,10 @@ main() {
   wait "$pid_1" || die "Request 1 failed. Is the server still up?"
   wait "$pid_2" || die "Request 2 failed. Is the server still up?"
 
-  printf '  '
-  cell "$DIM" 3 "#"
-  cell "$DIM" 5 "HTTP"
-  cell "$DIM" 9 "Replayed"
-  cell "$DIM" 9 "Payment"
-  cell "$DIM" 14 "Balance after"
-  printf '%sTime%s\n' "$DIM" "$RESET"
+  print_responses_header
   print_response_row 1
   print_response_row 2
+  print_responses_footer
 
   step "3. What the database says"
   print_database_rows
