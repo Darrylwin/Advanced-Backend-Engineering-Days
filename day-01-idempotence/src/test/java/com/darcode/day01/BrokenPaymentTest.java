@@ -8,9 +8,7 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("broken")
 class BrokenPaymentTest extends AbstractPaymentApiTest {
 
-    /**
-     * Documents the bug: this test passes because it asserts the double charge actually happens.
-     */
+    /** Documents the bug: this test passes because it asserts the double charge actually happens. */
     @Test
     void doubleClick_isChargedTwice_documentsTheBug() throws Exception {
         postTwiceConcurrently("key-1", PAYLOAD);
