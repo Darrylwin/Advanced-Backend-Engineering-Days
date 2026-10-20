@@ -55,7 +55,7 @@ public class FixedPaymentService implements PaymentService {
 
     private static PaymentResult replay(Payment existing, String fingerPrint) {
         if (!fingerPrint.equals(existing.getRequestFingerprint())) {
-            throw new BusinessException(ErrorCode.IDEMPOTENCY_KEY_REFUSED,
+            throw new BusinessException(ErrorCode.IDEMPOTENCY_KEY_REUSED,
                     "This Idempotency-Key was already used with a different request.");
         }
         return new PaymentResult(existing, true);

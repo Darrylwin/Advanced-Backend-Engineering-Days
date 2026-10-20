@@ -40,7 +40,7 @@ class ApiExceptionHandler {
         return switch (code) {
             case ACCOUNT_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case IDEMPOTENCY_KEY_REQUIRED -> HttpStatus.BAD_REQUEST;
-            case INSUFFICIENT_FUNDS, IDEMPOTENCY_KEY_REFUSED -> HttpStatus.UNPROCESSABLE_CONTENT;
+            case INSUFFICIENT_FUNDS, IDEMPOTENCY_KEY_REUSED -> HttpStatus.UNPROCESSABLE_CONTENT;
             case IDEMPOTENCY_KEY_IN_USE, DATA_CONFLICT -> HttpStatus.CONFLICT;
         };
     }
