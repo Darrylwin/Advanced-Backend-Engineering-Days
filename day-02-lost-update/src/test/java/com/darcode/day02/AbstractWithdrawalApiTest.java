@@ -14,10 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,8 +90,9 @@ abstract class AbstractWithdrawalApiTest {
     /** Releases all the withdrawals at the same moment and counts the responses by status. */
     protected Outcome withdrawConcurrently() throws Exception {
         CountDownLatch startGate = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(CONCURRENT_REQUESTS);
 
-        try (ExecutorService pool = Executors.newFixedThreadPool(CONCURRENT_REQUESTS)) {
+        try {
             List<Future<Integer>> futures = new ArrayList<>();
             for (int i = 0; i < CONCURRENT_REQUESTS; i++) {
                 futures.add(pool.submit(() -> {
@@ -108,7 +106,7 @@ abstract class AbstractWithdrawalApiTest {
             long rejected = 0;
             long other = 0;
             for (Future<Integer> future : futures) {
-                int status = future.get();
+                int status = future.get(30, TimeUnit.SECONDS);
                 if (status == 204) {
                     accepted++;
                 } else if (status == 409) {
@@ -118,6 +116,8 @@ abstract class AbstractWithdrawalApiTest {
                 }
             }
             return new Outcome(accepted, rejected, other);
+        } finally {
+            pool.shutdownNow();
         }
     }
 
