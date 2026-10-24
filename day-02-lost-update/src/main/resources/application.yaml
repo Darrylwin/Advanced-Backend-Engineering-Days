@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: day-02-lost-update
+  profiles:
+    default: pessimistic
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/day02}
+    username: ${DB_USER:backend-engineer}
+    password: ${DB_PASSWORD:fWmKFPq74VQVtNWeFqxX0Ckr}
+    hikari:
+      maximum-pool-size: 20
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+demo:
+  processing-delay: 20ms
+  optimistic-max-attempts: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  info:
+    env:
+      enabled: true
+
+info:
+  mode: ${spring.profiles.active:${spring.profiles.default}}
