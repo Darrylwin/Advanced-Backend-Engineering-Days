@@ -8,7 +8,7 @@ DB_NAME="${DB_NAME:-day02}"
 # psql_query <sql> [database]: unaligned, tuples-only output, easy to parse.
 psql_query() {
   docker compose -f "$COMPOSE_FILE" exec -T postgres \
-    psql -U demo -d "${2:-$DB_NAME}" -X -q -A -t -F '|' -v ON_ERROR_STOP=1 -c "$1"
+    psql -U backend-engineer -d "${2:-$DB_NAME}" -X -q -A -t -F '|' -v ON_ERROR_STOP=1 -c "$1"
 }
 
 # One database per day keeps the Flyway histories of the different days apart.
