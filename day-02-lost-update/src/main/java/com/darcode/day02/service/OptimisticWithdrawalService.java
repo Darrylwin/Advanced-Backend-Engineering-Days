@@ -5,8 +5,8 @@ import com.darcode.day02.domain.VersionedAccount;
 import com.darcode.day02.exception.BusinessException;
 import com.darcode.day02.exception.ErrorCode;
 import com.darcode.day02.repository.VersionedAccountRepository;
-import jakarta.persistence.OptimisticLockException;
 import org.springframework.context.annotation.Profile;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -46,7 +46,7 @@ public class OptimisticWithdrawalService implements WithdrawalService {
             try {
                 transaction.executeWithoutResult(status -> debitOne(accountId, amountCents));
                 return;
-            } catch (OptimisticLockException conflict) {
+            } catch (OptimisticLockingFailureException conflict) {
                 backOff();
             }
         }
